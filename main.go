@@ -5,15 +5,20 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"path/filepath"
 
+	"github.com/kriswu/go_deepseek/grpc"
+	"github.com/kriswu/go_deepseek/proto"
 	"github.com/kriswu/go_deepseek/siliconproxy"
+	grpclib "google.golang.org/grpc"
 )
 
 // 服务器配置结构体
 type ServerConfig struct {
-	URL   string `json:"url"`
-	Token string `json:"token"`
+	URL      string `json:"url"`
+	Token    string `json:"token"`
+	GRPCPort int    `json:"grpc_port"`
 }
 
 // 加载服务器配置
@@ -46,58 +51,20 @@ func main() {
 	// 创建SiliconProxy实例
 	sp := siliconproxy.NewSiliconProxy(config.Token)
 
-	// 测试获取模型列表
-	fmt.Println("测试获取模型列表:")
-	models, err := sp.GetModelList()
+	// 创建gRPC服务器
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", config.GRPCPort))
 	if err != nil {
-		log.Printf("获取模型列表失败: %v\n", err)
-	} else {
-		fmt.Printf("获取到 %d 个模型\n", len(models.Data))
-		for _, model := range models.Data {
-			fmt.Printf("模型ID: %s, 所有者: %s\n", model.ID, model.OwnedBy)
-		}
-	}
-	fmt.Println()
-
-	// 测试对话能力
-	fmt.Println("测试对话能力:")
-	// fullfill all the fields of ChatCompletionRequest
-
-	chatReq := &siliconproxy.ChatCompletionRequest{
-		Model: "Qwen/QwQ-32B",
-		Messages: []siliconproxy.ChatCompletionMessage{
-			{Role: "user", Content: "What opportunities and challenges will the Chinese large model industry face in 2025?"},
-		},
-		Stream:           false,
-		MaxTokens:        512,
-		Stop:             nil,
-		Temperature:      0.7,
-		TopP:             0.7,
-		TopK:             50,
-		FrequencyPenalty: 0.5,
-		N:                1,
-		ResponseFormat: &siliconproxy.ResponseFormat{
-			Type: "text",
-		},
-		Tools: []siliconproxy.Tool{
-			{
-				Type: "function",
-				Function: siliconproxy.FunctionObject{
-					Description: "test",
-					Name:        "test",
-					Parameters:  map[string]interface{}{},
-					Strict:      false,
-				},
-			},
-		},
-	}
-	chatResp, err := sp.CreateChatCompletion(chatReq)
-	if err != nil {
-		log.Printf("创建对话失败: %v\n", err)
-	} else {
-		fmt.Printf("对话内容: %s\n", chatResp.Choices[0].Message.Content)
-		fmt.Printf("使用Token数: %d\n", chatResp.Usage.TotalTokens)
+		log.Fatalf("监听端口失败: %v", err)
 	}
 
-	fmt.Println()
+	s := grpclib.NewServer()
+
+	// 注册服务
+	proto.RegisterSiliconServiceServer(s, grpc.NewSiliconServer(sp))
+
+	// 启动服务
+	log.Printf("gRPC服务器启动，监听端口: %d\n", config.GRPCPort)
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("服务启动失败: %v", err)
+	}
 }

@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package silicon;
+
+option go_package = "github.com/kriswu/go_deepseek/proto";
+
+// 模型信息
+message Model {
+  string id = 1;
+  string owned_by = 2;
+}
+
+// 获取模型列表响应
+message GetModelListResponse {
+  repeated Model data = 1;
+}
+
+// 聊天消息
+message ChatMessage {
+  string role = 1;
+  string content = 2;
+}
+
+// 响应格式
+message ResponseFormat {
+  string type = 1;
+}
+
+// 函数对象
+message FunctionObject {
+  string description = 1;
+  string name = 2;
+  bool strict = 3;
+}
+
+// 工具
+message Tool {
+  string type = 1;
+  FunctionObject function = 2;
+}
+
+// 聊天请求
+message ChatCompletionRequest {
+  string model = 1;
+  repeated ChatMessage messages = 2;
+  bool stream = 3;
+  int32 max_tokens = 4;
+  repeated string stop = 5;
+  float temperature = 6;
+  float top_p = 7;
+  int32 top_k = 8;
+  float frequency_penalty = 9;
+  int32 n = 10;
+  ResponseFormat response_format = 11;
+  repeated Tool tools = 12;
+}
+
+// 聊天响应中的选择
+message Choice {
+  ChatMessage message = 1;
+  int32 index = 2;
+}
+
+// Token使用统计
+message Usage {
+  int32 prompt_tokens = 1;
+  int32 completion_tokens = 2;
+  int32 total_tokens = 3;
+}
+
+// 聊天响应
+message ChatCompletionResponse {
+  string id = 1;
+  string object = 2;
+  int64 created = 3;
+  string model = 4;
+  repeated Choice choices = 5;
+  Usage usage = 6;
+}
+
+// Silicon服务
+service SiliconService {
+  // 获取模型列表
+  rpc GetModelList(Empty) returns (GetModelListResponse) {}
+  // 创建聊天对话
+  rpc CreateChatCompletion(ChatCompletionRequest) returns (ChatCompletionResponse) {}
+}
+
+// 空消息
+message Empty {}

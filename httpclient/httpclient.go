@@ -42,7 +42,7 @@ func WithHeader(key, value string) ClientOption {
 func NewClient(options ...ClientOption) *Client {
 	client := &Client{
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 100 * time.Second,
 		},
 		headers: make(map[string]string),
 	}
